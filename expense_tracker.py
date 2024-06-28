@@ -2,11 +2,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 import csv
+import os
 
 
 
 RECORD_SUMMARY_DATA = []
 BUDGET = 0.0
+EXPENSE_FILE = 'expenses.csv'
 
 
 def main():
@@ -18,6 +20,16 @@ def main():
     # Main menu for expense tracker
     menu_option()
 
+
+def load_expenses():
+    total_spent = 0
+    if os.path.exists(EXPENSE_FILE):
+        with open(EXPENSE_FILE, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                RECORD_SUMMARY_DATA.append(row)
+                total_spent += float(row['amount'])
+    return total_spent
 
 def menu_option():
     # User will have few options to select in main menu
@@ -58,14 +70,14 @@ def menu_option():
 def record_summary():
     print("🎯 Record Summary!\n")
 
-    total_spent = 0
+    total_spent = sum(float(record["amount"]) 
+                      for record in RECORD_SUMMARY_DATA)
 
     print("Here's the daily record summary")
     if RECORD_SUMMARY_DATA:
         for record in RECORD_SUMMARY_DATA:
-            print(f"<Date: {record['date']}, Category: {record['category']}, "
-                  f"Expense Name: {record['expense_name']}, Amount: {record['amount']} pesos>")
-            total_spent += record["amount"] 
+            print(f"< Date: {record['date']}, Category: {record['category']}, "
+                  f"Expense Name: {record['expense_name']}, Amount: {record['amount']} pesos >")
 
         remaining_budget = BUDGET - total_spent
         print(f"\nRemaining Budget: {remaining_budget} pesos\n")
@@ -80,7 +92,7 @@ def record_summary():
         if save_expenses_csv.lower() in ('yes', 'y'):
             save_expenses(RECORD_SUMMARY_DATA, "expense.csv")
             print("Saved.")
-            display_graph()
+            display_graph(RECORD_SUMMARY_DATA)
             break
         elif save_expenses_csv.lower() in ('no', 'n'):
             print("Not saved.")
@@ -120,6 +132,7 @@ def track_expenses_details():
         # Ask user if they want to continue
         cont = input("\nDo you want to continue? (yes/no): ")
         if cont.lower() in ("no" , "n"):
+            save_expenses(RECORD_SUMMARY_DATA, EXPENSE_FILE)
             display_graph()
             break
         elif cont.lower() in ("yes", "y"):
@@ -196,11 +209,23 @@ def check_budget(BUDGET, total_expense):
 
 # Display the graph of expense category with it's total amount by category
 def display_graph(expenses):
-    categories = list(expenses.keys())
-    amounts = [sum(category.values()) for category in expenses.values()]
-    # Create a random color for the bar graph
-    colors = (np.random.random(), np.random.random(), np.random.random())
-    plt.bar(categories, amounts, color = colors)
+    categories = [record['category'] for record in expenses]
+    amounts = [float(record['amount']) for record in expenses]
+    
+    # Aggregate amounts by category
+    category_amounts = {}
+    for category, amount in zip(categories, amounts):
+        if category in category_amounts:
+            category_amounts[category] += amount
+        else:
+            category_amounts[category] = amount
+    
+    categories = list(category_amounts.keys())
+    amounts = list(category_amounts.values())
+    
+    # Create a bar graph
+    colors = np.random.rand(len(categories), 3)
+    plt.bar(categories, amounts, color=colors)
     plt.xlabel('Expense Category')
     plt.ylabel('Amount in Pesos')
     plt.title('Expenses by Category')
